@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sopa de Letras CETO e IA</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+            color: #fff;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+        }
+
+        h1 { 
+            margin-bottom: 20px; 
+            color: #00d2ff;
+            text-shadow: 0 0 10px rgba(0, 210, 255, 0.5);
+        }
+
+        .grid-container {
+            display: grid;
+            grid-template-columns: repeat(12, 42px);
+            grid-template-rows: repeat(12, 42px);
+            gap: 3px;
+            background-color: #1a1a2e;
+            padding: 12px;
+            border-radius: 10px;
+            box-shadow: 0 0 30px rgba(0, 210, 255, 0.4);
+        }
+
+        .cell {
+            width: 42px;
+            height: 42px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: #16213e;
+            font-size: 18px;
+            font-weight: bold;
+            color: #fff;
+            border-radius: 4px;
+            transition: transform 0.3s;
+        }
+
+        /* Colores para las 10 palabras */
+        .w-contexto { background-color: rgba(255, 59, 48, 0.5); }
+        .w-experto   { background-color: rgba(0, 122, 255, 0.5); }
+        .w-tarea     { background-color: rgba(52, 199, 89, 0.5); }
+        .w-output    { background-color: rgba(255, 149, 0, 0.5); }
+        .w-prompt    { background-color: rgba(175, 82, 222, 0.5); }
+        .w-nodo      { background-color: rgba(90, 200, 250, 0.5); }
+        .w-mapa      { background-color: rgba(255, 45, 85, 0.5); }
+        .w-enlace    { background-color: rgba(162, 132, 94, 0.6); }
+        .w-red       { background-color: rgba(255, 100, 150, 0.5); }
+        .w-ia        { background-color: rgba(255, 214, 10, 0.6); }
+
+        /* Animación de titileo a 3.5s (más lento) */
+        @keyframes twinkle-intense {
+            0%, 100% { 
+                opacity: 1; 
+                transform: scale(1);
+            }
+            50% { 
+                opacity: 0.2; 
+                transform: scale(0.85);
+            }
+        }
+
+        .anim-1 { animation: twinkle-intense 3.5s infinite ease-in-out; }
+        .anim-2 { animation: twinkle-intense 3.5s infinite ease-in-out 0.35s; }
+        .anim-3 { animation: twinkle-intense 3.5s infinite ease-in-out 0.7s; }
+        .anim-4 { animation: twinkle-intense 3.5s infinite ease-in-out 1.05s; }
+        .anim-5 { animation: twinkle-intense 3.5s infinite ease-in-out 1.4s; }
+        .anim-6 { animation: twinkle-intense 3.5s infinite ease-in-out 1.75s; }
+        .anim-7 { animation: twinkle-intense 3.5s infinite ease-in-out 2.1s; }
+        .anim-8 { animation: twinkle-intense 3.5s infinite ease-in-out 2.45s; }
+        .anim-9 { animation: twinkle-intense 3.5s infinite ease-in-out 2.8s; }
+        .anim-10 { animation: twinkle-intense 3.5s infinite ease-in-out 3.15s; }
+        
+        .legend {
+            margin-top: 25px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            justify-content: center;
+            max-width: 700px;
+        }
+        .legend-item {
+            padding: 8px 15px;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: bold;
+            box-shadow: 0 0 10px rgba(255,255,255,0.2);
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Sopa de Letras: CETO e IA</h1>
+    <div class="grid-container" id="grid"></div>
+    
+    <div class="legend" id="legend"></div>
+
+    <script>
+        const size = 12;
+        const gridContainer = document.getElementById('grid');
+        const legendContainer = document.getElementById('legend');
+
+        // 10 palabras con 8 direcciones únicas
+        const wordsData = [
+            { text: 'CONTEXTO', path: [[0,0],[0,1],[0,2],[0,3],[0,4],[0,5],[0,6],[0,7]], cls: 'w-contexto', anim: 'anim-1' },
+            { text: 'EXPERTO',  path: [[0,11],[1,11],[2,11],[3,11],[4,11],[5,11],[6,11]], cls: 'w-experto', anim: 'anim-2' },
+            { text: 'TAREA',    path: [[11,11],[11,10],[11,9],[11,8],[11,7]], cls: 'w-tarea', anim: 'anim-3' },
+            { text: 'OUTPUT',   path: [[11,0],[10,0],[9,0],[8,0],[7,0],[6,0]], cls: 'w-output', anim: 'anim-4' },
+            { text: 'PROMPT',   path: [[1,1],[2,2],[3,3],[4,4],[5,5],[6,6]], cls: 'w-prompt', anim: 'anim-5' },
+            { text: 'NODO',     path: [[9,1],[8,2],[7,3],[6,4]], cls: 'w-nodo', anim: 'anim-6' },
+            { text: 'MAPA',     path: [[2,10],[3,9],[4,8],[5,7]], cls: 'w-mapa', anim: 'anim-7' },
+            { text: 'ENLACE',   path: [[10,11],[9,10],[8,9],[7,8],[6,7],[5,6]], cls: 'w-enlace', anim: 'anim-8' },
+            { text: 'RED',      path: [[3,0],[3,1],[3,2]], cls: 'w-red', anim: 'anim-9' },
+            { text: 'IA',       path: [[1,9],[2,9]], cls: 'w-ia', anim: 'anim-10' }
+        ];
+
+        // Crear matriz vacía
+        let matrix = Array(size).fill().map(() => Array(size).fill(''));
+        const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+
+        // Rellenar con las palabras
+        wordsData.forEach(w => {
+            w.path.forEach((coord, index) => {
+                matrix[coord[0]][coord[1]] = w.text[index];
+            });
+        });
+
+        // Rellenar espacios vacíos con letras aleatorias
+        for (let r = 0; r < size; r++) {
+            for (let c = 0; c < size; c++) {
+                if (matrix[r][c] === '') {
+                    matrix[r][c] = alphabet[Math.floor(Math.random() * alphabet.length)];
+                }
+            }
+        }
+
+        // Renderizar cuadrícula
+        for (let r = 0; r < size; r++) {
+            for (let c = 0; c < size; c++) {
+                const cell = document.createElement('div');
+                cell.className = 'cell';
+                cell.textContent = matrix[r][c];
+                cell.id = `cell-${r}-${c}`;
+                gridContainer.appendChild(cell);
+            }
+        }
+
+        // Aplicar colores y animaciones
+        wordsData.forEach(w => {
+            w.path.forEach(coord => {
+                const cell = document.getElementById(`cell-${coord[0]}-${coord[1]}`);
+                cell.classList.add(w.cls, w.anim);
+            });
+            
+            // Crear leyenda SIN flechas
+            const legendItem = document.createElement('div');
+            legendItem.className = `legend-item ${w.cls}`;
+            legendItem.textContent = w.text;
+            legendContainer.appendChild(legendItem);
+        });
+    </script>
+</body>
+</html>
